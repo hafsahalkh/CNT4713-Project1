@@ -14,86 +14,68 @@ import java.util.List;
 public class monitor {
     public static void main(String[] args) throws IOException {
         
-        // get urls file from command line
+        //get urls file from command line
         String urlsFile = null;
         
-        if (args.length == 0) {
-            
-            System.out.println();
-            
-            System.out.println("Usage: java monitor urls_file");
-            
+        if (args.length == 0) {            
+            System.out.println();            
+            System.out.println("Usage: java monitor urls_file");            
             System.exit(0);
-        } else {
             
+        } else {            
             urlsFile = args[0];
         }
 
-        // TODO: Read URLs from file and monitor each one
-        List<String> urls = readUrlsFromFile(urlsFile);
-        
-        for (String url : urls) {
-            
-            monitorUrl(url);
+        List<String> urls = readUrlsFromFile(urlsFile); //storing URLs in array list
+        for (int i = 0; i < urls.size(); i++) {//for loop to read and monitor each URL
+            String url = urls.get(i);//read the URL
+            monitorUrl(url);//monitor URL
         }
+
     }
 
     //reading the URLS from the file
     private static List<String> readUrlsFromFile(String filename) {
-          try {
-              
+        
+          try {              
             return Files.readAllLines(Paths.get(filename));//reading the file using the filename provided by user
               
-        } catch (IOException e) {
-              
-            System.err.println("Cannot read the file: " + e.getMessage());//error handling
-              
+        } catch (IOException e) {              
+            System.err.println("Cannot read the file: " + e.getMessage());//error handling            
             return null;
         }
     }
 
     //monitoring URLs
     private static void monitorUrl(String urlString) {
+        
     try {
-        URL url = new URL(urlString);  //defining URL object
-        
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(); //opening the connection
-        
-        connection.setInstanceFollowRedirects(true); //enabling redirects
-        
-        connection.setRequestMethod("GET"); //setting the GET request
-        
+        URL url = new URL(urlString);  //defining URL object        
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(); //opening the connection        
+        connection.setInstanceFollowRedirects(true); //enabling redirects        
+        connection.setRequestMethod("GET"); //setting the GET request        
         connection.connect(); //connecting to the server
-
-        int responseCode = connection.getResponseCode(); //retreiving status code from HTTP
-        
+        int responseCode = connection.getResponseCode(); //retreiving status code from HTTP        
         String responseMessage = connection.getResponseMessage(); // retreiving HTTP status
-
-        System.out.println(urlString " + responseCode + " " + responseMessage); //displaying the result
-
+        System.out.println(urlString + responseCode + " " + responseMessage); //displaying the result
         connection.disconnect(); //closing the connection
         
-    } catch (IOException e) {
-        
+    } catch (IOException e) {        
         System.err.println(urlString + " Error: " + e.getMessage()); //error handling
     }
 }
 
-
+    
     // Parse URL into components
     private static URLComponents parseUrl(String urlString) {
+        
     try {
         
-        URL url = new URL(urlString);//creating URL object
-        
-        String protocol = url.getProtocol();//getting the protocol from the URL
-        
-        String host = url.getHost();//getting the host from the URL
-        
-        int port = url.getPort();//getting the port from the URL
-        
+        URL url = new URL(urlString);//creating URL object        
+        String protocol = url.getProtocol();//getting the protocol from the URL        
+        String host = url.getHost();//getting the host from the URL        
+        int port = url.getPort();//getting the port from the URL        
         if (port == -1) {
-            
             port = 80;//setting to port 80 for HTTP if port is not provided
         }
         
