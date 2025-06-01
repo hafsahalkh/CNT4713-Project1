@@ -3,46 +3,116 @@ import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+
 
 public class monitor {
     public static void main(String[] args) throws IOException {
+        
         // get urls file from command line
         String urlsFile = null;
+        
         if (args.length == 0) {
+            
             System.out.println();
+            
             System.out.println("Usage: java monitor urls_file");
+            
             System.exit(0);
         } else {
+            
             urlsFile = args[0];
         }
 
         // TODO: Read URLs from file and monitor each one
         List<String> urls = readUrlsFromFile(urlsFile);
+        
         for (String url : urls) {
+            
             monitorUrl(url);
         }
     }
 
-    // Read URLs from the specified file
+    //reading the URLS from the file
     private static List<String> readUrlsFromFile(String filename) {
-        // TODO: Read file line by line and return list of URLs
-        return null;
+          try {
+              
+            return Files.readAllLines(Paths.get(filename));//reading the file using the filename provided by user
+              
+        } catch (IOException e) {
+              
+            System.err.println("Cannot read the file: " + e.getMessage());//error handling
+              
+            return null;
+        }
     }
 
-    // Monitor a single URL - main monitoring logic
-    private static void monitorUrl(String url) {
-        // TODO: Parse URL, create HTTP client, make request, handle response
-        // TODO: Handle redirections and referenced objects
-        // TODO: Print status in required format
-    }
+    //monitoring URLs
+    private static void monitorUrl(String urlString) {
+    try {
+        URL url = new URL(urlString);  //defining URL object
+        
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection(); //opening the connection
+        
+        connection.setInstanceFollowRedirects(true); //enabling redirects
+        
+        connection.setRequestMethod("GET"); //setting the GET request
+        
+        connection.connect(); //connecting to the server
 
-    // Parse URL into protocol, host, port, and path components
-    private static URLComponents parseUrl(String url) {
-        // TODO: Parse URL string into components
-        // TODO: Handle http:// and https:// protocols
-        // TODO: Extract host, port (default 80 for HTTP, 443 for HTTPS), and path
+        int responseCode = connection.getResponseCode(); //retreiving status code from HTTP
+        
+        String responseMessage = connection.getResponseMessage(); // retreiving HTTP status
+
+        System.out.println(urlString " + responseCode + " " + responseMessage); //displaying the result
+
+        connection.disconnect(); //closing the connection
+        
+    } catch (IOException e) {
+        
+        System.err.println(urlString + " Error: " + e.getMessage()); //error handling
+    }
+}
+
+
+    // Parse URL into components
+    private static URLComponents parseUrl(String urlString) {
+    try {
+        
+        URL url = new URL(urlString);//creating URL object
+        
+        String protocol = url.getProtocol();//getting the protocol from the URL
+        
+        String host = url.getHost();//getting the host from the URL
+        
+        int port = url.getPort();//getting the port from the URL
+        
+        if (port == -1) {
+            
+            port = 80;//setting to port 80 for HTTP if port is not provided
+        }
+        
+        String path = url.getPath();//getting the path from the URL
+        
+        if (path == null || path.isEmpty()) {//setting the path character if it does not exist
+            
+            path = "/";
+        }
+        return new URLComponents(protocol, host, port, path);//returning the components that were parsed from the URL
+        
+    } catch (MalformedURLException e) {
+        
+        System.err.println("Error with URL " + urlString);//error handling
+        
         return null;
     }
+}
+
 
     // Parse HTTP response into structured data
     private static HTTPResponse parseHttpResponse(String response) {
