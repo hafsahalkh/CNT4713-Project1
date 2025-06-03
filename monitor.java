@@ -57,7 +57,7 @@ public class monitor {
         connection.connect(); //connecting to the server
         int responseCode = connection.getResponseCode(); //retreiving status code from HTTP        
         String responseMessage = connection.getResponseMessage(); // retreiving HTTP status
-        System.out.println(urlString + responseCode + " " + responseMessage); //displaying the result
+        System.out.println(urlString + " " + responseCode + " " + responseMessage); //displaying the result
         connection.disconnect(); //closing the connection
         
     } catch (IOException e) {        
@@ -76,7 +76,11 @@ public class monitor {
         String host = url.getHost();//getting the host from the URL        
         int port = url.getPort();//getting the port from the URL        
         if (port == -1) {
-            port = 80;//setting to port 80 for HTTP if port is not provided
+            if ("https".equals(protocol)) {
+                port = 443; // Default HTTPS port
+            } else {
+                port = 80; // Default HTTP port
+            }
         }
         
         String path = url.getPath();//getting the path from the URL
@@ -98,26 +102,172 @@ public class monitor {
 
     // Parse HTTP response into structured data
     private static HTTPResponse parseHttpResponse(String response) {
-        // TODO: Parse status line to get status code and text
-        // TODO: Parse headers into map
-        // TODO: Extract body content
-        return null;
+
+        if (response == null || response.trim().isEmpty()) { // check the response, if empty return null
+            return null;
+        }
+
+        // create an HTTP response
+        HTTPResponse httpResponse = new HTTPResponse();
+        String[] lines = response.split("\r?\n"); // RFC specifies that lines are terminated using \r\n due to OS differences.
+
+        // parse the first line in the format: HTTP/1.1 200 OK
+        String[] statusParts = lines[0].split(" ", 3); // split the line into 3 parts
+        //create the statuscode
+        httpResponse.statusCode = Integer.parseInt(statusParts[1]); // assign the second part of the status to the code. "200"
+        if (statusParts.length >= 3) {
+            httpResponse.statusText = statusParts[2]; // FIXED: should be String, not parseInt
+        }
+        else {
+            httpResponse.statusText = "";
+        }
+
+        // now parse the headers until an empty line has been hit
+        int i = 1;
+        while (i < lines.length && !lines[i].isEmpty()) {
+            int colonIndex = lines[i].indexOf(":"); // FIXED: renamed from 'index' to 'colonIndex'
+            if (colonIndex > 0) {
+                String name = lines[i].substring(0, colonIndex).trim().toLowerCase();
+                String value = lines[i].substring(colonIndex + 1).trim(); // FIXED: use colonIndex
+                httpResponse.headers.put(name, value);
+            }
+            i++;
+        }
+
+        // anything after the empty line is the body 
+        String body = "";
+        for (int j = i+1; j < lines.length; j++) { // FIXED: condition should be j < lines.length
+            body += lines[j];
+            if (j < lines.length - 1) { // FIXED: condition should be j < lines.length - 1
+                body += "\n";
+            }
+        }
+        httpResponse.body = body;
+        return httpResponse;
+    
     }
 
     // Extract image URLs from HTML content
     private static List<String> extractImageUrls(String html, String baseUrl) {
-        // TODO: Use regex to find <img src="..."> tags
-        // TODO: Extract src attribute values
-        // TODO: Convert relative URLs to absolute URLs
-        return null;
+        List<String> imageUrls = new ArrayList<>(); // FIXED: renamed from imageURLS to imageUrls
+
+        if (html == null || html.trim().isEmpty()) { // FIXED: added () after trim
+            return imageUrls; // empty list is returned if there is no html
+        }
+
+        // regex pattern is created to match the following patterns:
+        // <img src="image.jpg"> 
+        //<img class="photo" src='photo.png' alt="text"> 
+        // <IMG SRC="logo.gif">
+        Pattern imgPattern = Pattern.compile("<img[^>]*\\ssrc\\s*=\\s*([\"'])([^\"']+)\\1[^>]*>", 
+                                               Pattern.CASE_INSENSITIVE);
+        Matcher matcher = imgPattern.matcher(html);
+        
+        while (matcher.find()) {
+            String imageUrl = matcher.group(2); // FIXED: renamed from imageURLS to imageUrl
+            
+            // Convert relative URLs to absolute URLs
+            String absoluteUrl = resolveUrl(baseUrl, imageUrl); // FIXED: use imageUrl instead of imageURLS
+            if (absoluteUrl != null) {
+                imageUrls.add(absoluteUrl); // FIXED: use imageUrls (the list) instead of imageURLS
+            }
+        }
+        
+        return imageUrls;
     }
 
-    // Convert relative URLs to absolute URLs
+
+    // Convert relative URLs to absolute URLs 
+    // "image_url may be a complete URL like http://abc.com/images/pic.jpg, or only the path like
+    // /images/pic.jpg if the referenced image is located on the same server as the original HTML file"
+
     private static String resolveUrl(String baseUrl, String relativeUrl) {
-        // TODO: Handle absolute URLs (return as-is)
-        // TODO: Handle relative paths (combine with base URL)
-        // TODO: Handle absolute paths (use base protocol and host)
-        return null;
+        if (relativeUrl == null || relativeUrl.trim().isEmpty()) { // FIXED: removed extra {}
+            return null;
+        }
+        
+        // Handle absolute URLs (return as-is)
+        if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
+            return relativeUrl;
+        }
+        
+        try {
+            URL base = new URL(baseUrl);
+            
+            // Handle absolute paths (starting with /)
+            if (relativeUrl.startsWith("/")) {
+                // Use base protocol and host with the absolute path
+                String res = base.getProtocol() + "://" + base.getHost();
+                
+                // Add port only if it's not the default port
+                if (base.getPort() != -1 && base.getPort() != 80 && base.getPort() != 443) {
+                    res += ":" + base.getPort();
+                }
+                
+                res += relativeUrl;
+                return res;
+            }
+            
+            
+            // Handle relative paths
+            String basePath = base.getPath();
+            if (!basePath.endsWith("/")) {
+                // Remove the file part from the path, keep only the directory
+                int lastSlash = basePath.lastIndexOf('/');
+                if (lastSlash >= 0) {
+                    basePath = basePath.substring(0, lastSlash + 1);
+                } else {
+                    basePath = "/";
+                }
+            }
+            
+            // Combine base URL with relative path
+            String resolvedPath = basePath + relativeUrl;
+            
+            // Normalize the path (handle .. and . components)
+            resolvedPath = normalizePath(resolvedPath);
+            
+            return base.getProtocol() + "://" + base.getHost() + 
+                   (base.getPort() != -1 && base.getPort() != 80 && base.getPort() != 443 
+                    ? ":" + base.getPort() : "") + resolvedPath;
+                    
+        } catch (MalformedURLException e) {
+            // If base URL is malformed, return null
+            return null;
+        }
+    }
+    
+    // Helper method to normalize paths (handle .. and . components)
+    private static String normalizePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return "/";
+        }
+        
+        String[] parts = path.split("/");
+        List<String> normalizedParts = new ArrayList<>();
+        
+        for (String part : parts) {
+            if (part.equals("..")) {
+                // Go up one directory
+                if (!normalizedParts.isEmpty()) {
+                    normalizedParts.remove(normalizedParts.size() - 1);
+                }
+            } else if (!part.equals(".") && !part.isEmpty()) {
+                // Add normal directory/file names (skip "." and empty parts)
+                normalizedParts.add(part);
+            }
+        }
+        
+        StringBuilder normalized = new StringBuilder();
+        normalized.append("/");
+        for (int i = 0; i < normalizedParts.size(); i++) {
+            normalized.append(normalizedParts.get(i));
+            if (i < normalizedParts.size() - 1) {
+                normalized.append("/");
+            }
+        }
+        
+        return normalized.toString();
     }
 }
 
@@ -127,6 +277,13 @@ class URLComponents {
     String host;      // hostname
     int port;         // port number
     String path;      // path component
+    
+    public URLComponents(String protocol, String host, int port, String path) {
+        this.protocol = protocol;
+        this.host = host;
+        this.port = port;
+        this.path = path;
+    }
 }
 
 // HTTP response data structure
@@ -142,8 +299,11 @@ class HTTPResponse {
     
     // Helper method to get header value (case-insensitive)
     public String getHeader(String name) {
-        // TODO: Return header value for given name (case-insensitive)
-        return null;
+        //Return header value for given name (case-insensitive)
+        if (name == null) {
+            return null;
+        }
+        return headers.get(name.toLowerCase()); // FIXED: 'headers' instead of 'header'
     }
 }
 
@@ -195,3 +355,4 @@ class HTTPClient {
         }
     }
 }
+
