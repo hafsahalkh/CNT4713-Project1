@@ -116,7 +116,7 @@ public class monitor {
         //create the statuscode
         httpResponse.statusCode = Integer.parseInt(statusParts[1]); // assign the second part of the status to the code. "200"
         if (statusParts.length >= 3) {
-            httpResponse.statusText = statusParts[2]; // FIXED: should be String, not parseInt
+            httpResponse.statusText = statusParts[2]; 
         }
         else {
             httpResponse.statusText = "";
@@ -125,10 +125,10 @@ public class monitor {
         // now parse the headers until an empty line has been hit
         int i = 1;
         while (i < lines.length && !lines[i].isEmpty()) {
-            int colonIndex = lines[i].indexOf(":"); // FIXED: renamed from 'index' to 'colonIndex'
-            if (colonIndex > 0) {
-                String name = lines[i].substring(0, colonIndex).trim().toLowerCase();
-                String value = lines[i].substring(colonIndex + 1).trim(); // FIXED: use colonIndex
+            int index = lines[i].indexOf(":"); // : renamed from 'index' to 'colonIndex'
+            if (index > 0) {
+                String name = lines[i].substring(0, index).trim().toLowerCase();
+                String value = lines[i].substring(index + 1).trim(); 
                 httpResponse.headers.put(name, value);
             }
             i++;
@@ -136,9 +136,9 @@ public class monitor {
 
         // anything after the empty line is the body 
         String body = "";
-        for (int j = i+1; j < lines.length; j++) { // FIXED: condition should be j < lines.length
+        for (int j = i+1; j < lines.length; j++) { 
             body += lines[j];
-            if (j < lines.length - 1) { // FIXED: condition should be j < lines.length - 1
+            if (j < lines.length - 1) {
                 body += "\n";
             }
         }
@@ -149,10 +149,10 @@ public class monitor {
 
     // Extract image URLs from HTML content
     private static List<String> extractImageUrls(String html, String baseUrl) {
-        List<String> imageUrls = new ArrayList<>(); // FIXED: renamed from imageURLS to imageUrls
+        List<String> imageUrls = new ArrayList<>(); 
 
-        if (html == null || html.trim().isEmpty()) { // FIXED: added () after trim
-            return imageUrls; // empty list is returned if there is no html
+        if (html == null || html.trim().isEmpty()) { 
+            return imageUrls; 
         }
 
         // regex pattern is created to match the following patterns:
@@ -164,12 +164,12 @@ public class monitor {
         Matcher matcher = imgPattern.matcher(html);
         
         while (matcher.find()) {
-            String imageUrl = matcher.group(2); // FIXED: renamed from imageURLS to imageUrl
+            String imageUrl = matcher.group(2);
             
             // Convert relative URLs to absolute URLs
-            String absoluteUrl = resolveUrl(baseUrl, imageUrl); // FIXED: use imageUrl instead of imageURLS
+            String absoluteUrl = resolveUrl(baseUrl, imageUrl); 
             if (absoluteUrl != null) {
-                imageUrls.add(absoluteUrl); // FIXED: use imageUrls (the list) instead of imageURLS
+                imageUrls.add(absoluteUrl); 
             }
         }
         
@@ -182,7 +182,7 @@ public class monitor {
     // /images/pic.jpg if the referenced image is located on the same server as the original HTML file"
 
     private static String resolveUrl(String baseUrl, String relativeUrl) {
-        if (relativeUrl == null || relativeUrl.trim().isEmpty()) { // FIXED: removed extra {}
+        if (relativeUrl == null || relativeUrl.trim().isEmpty()) { 
             return null;
         }
         
@@ -303,7 +303,7 @@ class HTTPResponse {
         if (name == null) {
             return null;
         }
-        return headers.get(name.toLowerCase()); // FIXED: 'headers' instead of 'header'
+        return headers.get(name.toLowerCase()); //  : 'headers' instead of 'header'
     }
 }
 
