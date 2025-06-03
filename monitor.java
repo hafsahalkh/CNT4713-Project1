@@ -125,7 +125,7 @@ public class monitor {
         // now parse the headers until an empty line has been hit
         int i = 1;
         while (i < lines.length && !lines[i].isEmpty()) {
-            int index = lines[i].indexOf(":"); // : renamed from 'index' to 'colonIndex'
+            int index = lines[i].indexOf(":");
             if (index > 0) {
                 String name = lines[i].substring(0, index).trim().toLowerCase();
                 String value = lines[i].substring(index + 1).trim(); 
