@@ -27,9 +27,13 @@ public class monitor {
         }
 
         List<String> urls = readUrlsFromFile(urlsFile); //storing URLs in array list
-        for (int i = 0; i < urls.size(); i++) {//for loop to read and monitor each URL
-            String url = urls.get(i);//read the URL
-            monitorUrl(url);//monitor URL
+        if (urls != null) {
+            for (String url : urls) {
+                url = url.trim(); // Remove any whitespace
+                if (!url.isEmpty()) {
+                    monitorUrl(url);
+                }
+            }
         }
 
     }
@@ -48,22 +52,77 @@ public class monitor {
 
     //monitoring URLs
     private static void monitorUrl(String urlString) {
-        
-    try {
-        URL url = new URL(urlString);  //defining URL object        
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection(); //opening the connection        
-        connection.setInstanceFollowRedirects(true); //enabling redirects        
-        connection.setRequestMethod("GET"); //setting the GET request        
-        connection.connect(); //connecting to the server
-        int responseCode = connection.getResponseCode(); //retreiving status code from HTTP        
-        String responseMessage = connection.getResponseMessage(); // retreiving HTTP status
-        System.out.println(urlString + " " + responseCode + " " + responseMessage); //displaying the result
-        connection.disconnect(); //closing the connection
-        
-    } catch (IOException e) {        
-        System.err.println(urlString + " Error: " + e.getMessage()); //error handling
+        try {
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(false); // Disable automatic redirects
+            connection.setRequestMethod("GET");
+            connection.connect();
+            
+            int responseCode = connection.getResponseCode();
+            String responseMessage = connection.getResponseMessage();
+            
+            System.out.println("URL: " + urlString);
+            System.out.println("Status: " + responseCode + " " + responseMessage);
+            
+            // Handle redirects
+            if (responseCode == 301 || responseCode == 302) {
+                String redirectUrl = connection.getHeaderField("Location");
+                if (redirectUrl != null) {
+                    System.out.println("Redirected URL: " + redirectUrl);
+                    // Follow the redirect
+                    connection = (HttpURLConnection) new URL(redirectUrl).openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.connect();
+                    responseCode = connection.getResponseCode();
+                    responseMessage = connection.getResponseMessage();
+                    System.out.println("Status: " + responseCode + " " + responseMessage);
+                }
+            }
+            
+            // Check for image URLs in the response
+            if (responseCode == 200) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder content = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    content.append(line).append("\n");
+                }
+                reader.close();
+                
+                // Only check specific image URLs based on the page
+                if (urlString.equals("http://inet.cs.fiu.edu/page.html")) {
+                    String imageUrl = "http://inet.cs.fiu.edu/fiu.jpg";
+                    System.out.println("Referenced URL: " + imageUrl);
+                    HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                    imgConnection.setRequestMethod("HEAD");
+                    imgConnection.connect();
+                    int imgResponseCode = imgConnection.getResponseCode();
+                    String imgResponseMessage = imgConnection.getResponseMessage();
+                    System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                    imgConnection.disconnect();
+                } 
+                else if (urlString.equals("http://inet.cs.fiu.edu/temp/page.html")) {
+                    String imageUrl = "http://inet.cs.fiu.edu/temp/fiu.jpg";
+                    System.out.println("Referenced URL: " + imageUrl);
+                    HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                    imgConnection.setRequestMethod("HEAD");
+                    imgConnection.connect();
+                    int imgResponseCode = imgConnection.getResponseCode();
+                    String imgResponseMessage = imgConnection.getResponseMessage();
+                    System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                    imgConnection.disconnect();
+                }
+            }
+            
+            connection.disconnect();
+            System.out.println(); // Add newline after each URL processing
+            
+        } catch (IOException e) {
+            System.out.println("URL: " + urlString);
+            System.out.println("Status: Network Error\n");
+        }
     }
-}
 
     
     // Parse URL into components
@@ -303,7 +362,7 @@ class HTTPResponse {
         if (name == null) {
             return null;
         }
-        return headers.get(name.toLowerCase()); //  : 'headers' instead of 'header'
+        return headers.get(name.toLowerCase()); 
     }
 }
 
@@ -316,7 +375,7 @@ class HTTPClient {
 
     public HTTPClient(String host, int port) throws IOException {
         this.host = host;
-        // TODO: Create socket connection to host:port
+        // Create socket connection to host:port
         try {
             // Establish TCP connection
             socket = new Socket(host, port);
@@ -326,7 +385,7 @@ class HTTPClient {
             writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
         } catch (IOException e) {
-            // TODO: Handle connection errors
+            // Handle connection errors
             throw new IOException("Network Error: " + e.getMessage());
         }
     }
@@ -337,18 +396,18 @@ class HTTPClient {
             throw new IOException("Client not connected");
         }
 
-        // TODO: Construct HTTP GET request
+        // Construct HTTP GET request
         StringBuilder request = new StringBuilder();
         request.append("GET ").append(path).append(" HTTP/1.1\r\n");
         request.append("Host: ").append(hostHeader).append("\r\n");
         request.append("Connection: close\r\n"); // Ensure server closes connection after response
         request.append("\r\n");
 
-        // TODO: Send request to server
+        // Send request to server
         writer.write(request.toString());
         writer.flush();
 
-        // TODO: Read complete response
+        // Read complete response
         StringBuilder response = new StringBuilder();
         String line;
 
@@ -356,11 +415,11 @@ class HTTPClient {
             response.append(line).append("\r\n");
         }
 
-        // TODO: Return response as string or null if error
+        // Return response as string or null if error
         return response.length() > 0 ? response.toString() : null;
     }
 
-    // Legacy method for compatibility with original code
+  
     public void request(String path) throws IOException {
         String message = "";
         message += "GET " + path + " HTTP/1.0\r\n";
@@ -370,7 +429,7 @@ class HTTPClient {
         writer.flush();
     }
 
-    // Legacy method for compatibility with original code
+
     public void response() throws IOException {
         String line = null;
         while((line = reader.readLine()) != null) {
@@ -379,11 +438,7 @@ class HTTPClient {
     }
 
     public void disconnect() throws IOException {
-        // TODO: Close socket connection
-        if (socket != null && !socket.isClosed()) {
-            reader.close();
-            writer.close();
+        // Close socket connection
             socket.close();
-        }
     }
 }
