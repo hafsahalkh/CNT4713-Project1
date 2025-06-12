@@ -82,14 +82,6 @@ public class monitor {
             
             // Check for image URLs in the response
             if (responseCode == 200) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                StringBuilder content = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line).append("\n");
-                }
-                reader.close();
-                
                 // Only check specific image URLs based on the page
                 if (urlString.equals("http://inet.cs.fiu.edu/page.html")) {
                     String imageUrl = "http://inet.cs.fiu.edu/fiu.jpg";
