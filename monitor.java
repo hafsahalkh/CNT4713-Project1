@@ -317,17 +317,47 @@ class HTTPClient {
     public HTTPClient(String host, int port) throws IOException {
         this.host = host;
         // TODO: Create socket connection to host:port
-        // TODO: Set up buffered reader and writer
-        // TODO: Handle connection errors
+        try {
+            // Establish TCP connection
+            socket = new Socket(host, port);
+
+            // Set up buffered reader and writer
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+
+        } catch (IOException e) {
+            // TODO: Handle connection errors
+            throw new IOException("Network Error: " + e.getMessage());
+        }
     }
 
     // Send HTTP request and return full response as string
     public String request(String path, String hostHeader) throws IOException {
+        if (writer == null || reader == null) {
+            throw new IOException("Client not connected");
+        }
+
         // TODO: Construct HTTP GET request
+        StringBuilder request = new StringBuilder();
+        request.append("GET ").append(path).append(" HTTP/1.1\r\n");
+        request.append("Host: ").append(hostHeader).append("\r\n");
+        request.append("Connection: close\r\n"); // Ensure server closes connection after response
+        request.append("\r\n");
+
         // TODO: Send request to server
+        writer.write(request.toString());
+        writer.flush();
+
         // TODO: Read complete response
+        StringBuilder response = new StringBuilder();
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            response.append(line).append("\r\n");
+        }
+
         // TODO: Return response as string or null if error
-        return null;
+        return response.length() > 0 ? response.toString() : null;
     }
 
     // Legacy method for compatibility with original code
@@ -343,7 +373,7 @@ class HTTPClient {
     // Legacy method for compatibility with original code
     public void response() throws IOException {
         String line = null;
-        while((line=reader.readLine()) != null) {
+        while((line = reader.readLine()) != null) {
             System.out.println(line);
         }
     }
@@ -351,8 +381,9 @@ class HTTPClient {
     public void disconnect() throws IOException {
         // TODO: Close socket connection
         if (socket != null && !socket.isClosed()) {
+            reader.close();
+            writer.close();
             socket.close();
         }
     }
 }
-
