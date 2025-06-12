@@ -71,12 +71,15 @@ public class monitor {
                 if (redirectUrl != null) {
                     System.out.println("Redirected URL: " + redirectUrl);
                     // Follow the redirect
+                    connection.disconnect(); // Close the first connection
                     connection = (HttpURLConnection) new URL(redirectUrl).openConnection();
                     connection.setRequestMethod("GET");
                     connection.connect();
                     responseCode = connection.getResponseCode();
                     responseMessage = connection.getResponseMessage();
-                    System.out.println("Status: " + responseCode + " " + responseMessage);
+                    System.out.println("Status: " + responseCode + " " + responseMessage + "\n");
+                    connection.disconnect();
+                    return; // Exit after handling redirect
                 }
             }
             
