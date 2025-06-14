@@ -195,7 +195,7 @@ public class monitor {
             
         } catch (Exception e) {
             System.out.println("URL: " + urlString);
-            System.out.println("Status: Network Error - " + "\n");
+            System.out.println("Status: Network Error" + "\n");
         }
     }
 
