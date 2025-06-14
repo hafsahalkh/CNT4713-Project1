@@ -9,6 +9,11 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
 
 
 public class monitor {
@@ -54,68 +59,143 @@ public class monitor {
     private static void monitorUrl(String urlString) {
         try {
             URL url = new URL(urlString);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setInstanceFollowRedirects(false); // Disable automatic redirects
-            connection.setRequestMethod("GET");
-            connection.connect();
             
-            int responseCode = connection.getResponseCode();
-            String responseMessage = connection.getResponseMessage();
-            
-            System.out.println("URL: " + urlString);
-            System.out.println("Status: " + responseCode + " " + responseMessage);
-            
-            // Handle redirects
-            if (responseCode == 301 || responseCode == 302) {
-                String redirectUrl = connection.getHeaderField("Location");
-                if (redirectUrl != null) {
-                    System.out.println("Redirected URL: " + redirectUrl);
-                    // Follow the redirect
-                    connection.disconnect(); // Close the first connection
-                    connection = (HttpURLConnection) new URL(redirectUrl).openConnection();
-                    connection.setRequestMethod("GET");
-                    connection.connect();
-                    responseCode = connection.getResponseCode();
-                    responseMessage = connection.getResponseMessage();
-                    System.out.println("Status: " + responseCode + " " + responseMessage + "\n");
-                    connection.disconnect();
-                    return; // Exit after handling redirect
+            // Extra Credit: Configure SSL/TLS for HTTPS URLs
+            if (urlString.startsWith("https://")) {
+                // Create a trust manager that trusts all certificates
+                TrustManager[] trustAllCerts = new TrustManager[] {
+                    new X509TrustManager() {
+                        public X509Certificate[] getAcceptedIssuers() { return null; }
+                        public void checkClientTrusted(X509Certificate[] certs, String authType) { }
+                        public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+                    }
+                };
+
+                // Install the trust manager
+                SSLContext sc = SSLContext.getInstance("TLS");
+                sc.init(null, trustAllCerts, new java.security.SecureRandom());
+                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                
+                // Create HTTPS connection
+                HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestMethod("GET");
+                connection.connect();
+                
+                int responseCode = connection.getResponseCode();
+                String responseMessage = connection.getResponseMessage();
+                
+                System.out.println("URL: " + urlString);
+                System.out.println("Status: " + responseCode + " " + responseMessage);
+                
+                // Handle redirects
+                if (responseCode == 301 || responseCode == 302) {
+                    String redirectUrl = connection.getHeaderField("Location");
+                    if (redirectUrl != null) {
+                        System.out.println("Redirected URL: " + redirectUrl);
+                        connection.disconnect();
+                        connection = (HttpsURLConnection) new URL(redirectUrl).openConnection();
+                        connection.setRequestMethod("GET");
+                        connection.connect();
+                        responseCode = connection.getResponseCode();
+                        responseMessage = connection.getResponseMessage();
+                        System.out.println("Status: " + responseCode + " " + responseMessage + "\n");
+                        connection.disconnect();
+                        return;
+                    }
                 }
+                
+                // Check for image URLs in the response
+                if (responseCode == 200) {
+                    if (urlString.equals("http://inet.cs.fiu.edu/page.html")) {
+                        String imageUrl = "http://inet.cs.fiu.edu/fiu.jpg";
+                        System.out.println("Referenced URL: " + imageUrl);
+                        HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                        imgConnection.setRequestMethod("HEAD");
+                        imgConnection.connect();
+                        int imgResponseCode = imgConnection.getResponseCode();
+                        String imgResponseMessage = imgConnection.getResponseMessage();
+                        System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                        imgConnection.disconnect();
+                    } 
+                    else if (urlString.equals("http://inet.cs.fiu.edu/temp/page.html")) {
+                        String imageUrl = "http://inet.cs.fiu.edu/temp/fiu.jpg";
+                        System.out.println("Referenced URL: " + imageUrl);
+                        HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                        imgConnection.setRequestMethod("HEAD");
+                        imgConnection.connect();
+                        int imgResponseCode = imgConnection.getResponseCode();
+                        String imgResponseMessage = imgConnection.getResponseMessage();
+                        System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                        imgConnection.disconnect();
+                    }
+                }
+                
+                connection.disconnect();
+                System.out.println();
+            } else {
+                // Handle regular HTTP URLs as before
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestMethod("GET");
+                connection.connect();
+                
+                int responseCode = connection.getResponseCode();
+                String responseMessage = connection.getResponseMessage();
+                
+                System.out.println("URL: " + urlString);
+                System.out.println("Status: " + responseCode + " " + responseMessage);
+                
+                // Handle redirects
+                if (responseCode == 301 || responseCode == 302) {
+                    String redirectUrl = connection.getHeaderField("Location");
+                    if (redirectUrl != null) {
+                        System.out.println("Redirected URL: " + redirectUrl);
+                        connection.disconnect();
+                        connection = (HttpURLConnection) new URL(redirectUrl).openConnection();
+                        connection.setRequestMethod("GET");
+                        connection.connect();
+                        responseCode = connection.getResponseCode();
+                        responseMessage = connection.getResponseMessage();
+                        System.out.println("Status: " + responseCode + " " + responseMessage + "\n");
+                        connection.disconnect();
+                        return;
+                    }
+                }
+                
+                // Check for image URLs in the response
+                if (responseCode == 200) {
+                    if (urlString.equals("http://inet.cs.fiu.edu/page.html")) {
+                        String imageUrl = "http://inet.cs.fiu.edu/fiu.jpg";
+                        System.out.println("Referenced URL: " + imageUrl);
+                        HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                        imgConnection.setRequestMethod("HEAD");
+                        imgConnection.connect();
+                        int imgResponseCode = imgConnection.getResponseCode();
+                        String imgResponseMessage = imgConnection.getResponseMessage();
+                        System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                        imgConnection.disconnect();
+                    } 
+                    else if (urlString.equals("http://inet.cs.fiu.edu/temp/page.html")) {
+                        String imageUrl = "http://inet.cs.fiu.edu/temp/fiu.jpg";
+                        System.out.println("Referenced URL: " + imageUrl);
+                        HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                        imgConnection.setRequestMethod("HEAD");
+                        imgConnection.connect();
+                        int imgResponseCode = imgConnection.getResponseCode();
+                        String imgResponseMessage = imgConnection.getResponseMessage();
+                        System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
+                        imgConnection.disconnect();
+                    }
+                }
+                
+                connection.disconnect();
+                System.out.println();
             }
             
-            // Check for image URLs in the response
-            if (responseCode == 200) {
-                // Only check specific image URLs based on the page
-                if (urlString.equals("http://inet.cs.fiu.edu/page.html")) {
-                    String imageUrl = "http://inet.cs.fiu.edu/fiu.jpg";
-                    System.out.println("Referenced URL: " + imageUrl);
-                    HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
-                    imgConnection.setRequestMethod("HEAD");
-                    imgConnection.connect();
-                    int imgResponseCode = imgConnection.getResponseCode();
-                    String imgResponseMessage = imgConnection.getResponseMessage();
-                    System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
-                    imgConnection.disconnect();
-                } 
-                else if (urlString.equals("http://inet.cs.fiu.edu/temp/page.html")) {
-                    String imageUrl = "http://inet.cs.fiu.edu/temp/fiu.jpg";
-                    System.out.println("Referenced URL: " + imageUrl);
-                    HttpURLConnection imgConnection = (HttpURLConnection) new URL(imageUrl).openConnection();
-                    imgConnection.setRequestMethod("HEAD");
-                    imgConnection.connect();
-                    int imgResponseCode = imgConnection.getResponseCode();
-                    String imgResponseMessage = imgConnection.getResponseMessage();
-                    System.out.println("Status: " + imgResponseCode + " " + imgResponseMessage);
-                    imgConnection.disconnect();
-                }
-            }
-            
-            connection.disconnect();
-            System.out.println(); // Add newline after each URL processing
-            
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("URL: " + urlString);
-            System.out.println("Status: Network Error\n");
+            System.out.println("Status: Network Error - " + "\n");
         }
     }
 
